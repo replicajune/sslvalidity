@@ -17,7 +17,7 @@ The critical and warning arg must be set as integer representing days before the
 
 A simple exemple would be :
 
-'''
+```
 ./check_sslvalidity -s github.com -w 10 -c 5
 OK : SSL validity goes beyond 1 month (expire May 17 12:00:00 2018 GMT)
-'''
+```
