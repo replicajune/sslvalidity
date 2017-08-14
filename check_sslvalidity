@@ -1,0 +1,62 @@
+#!/bin/bash
+TOTARG=$#
+
+while [[ $# -gt 0 ]]; do
+	ARG="$1"
+	case $ARG in
+		-s|--site)
+		SITE="$2"
+		shift
+		;;
+		-w|--warning)
+		WARN="$2"
+		shift
+		;;
+		-c|--critical)
+		CRIT="$2"
+		shift
+		;;
+		-h|--help)
+		HELP="$1"
+		shift
+		;;
+	esac
+	shift
+done
+
+if [[ -n $HELP ]]; then
+	echo -e " -s [address] -w [warning (number in days)] -c [critical (number in days)] \nAll arguments must be filled."
+	exit 3
+fi
+
+if [[ $TOTARG -lt 6 ]]; then
+	echo "missing arguments. -h or --help for instructions"
+	exit 3
+fi
+
+DATESSL=$(	echo | \
+			openssl s_client -connect $SITE:443 2>/dev/null | \
+			openssl x509 -noout -dates | \
+			grep notAfter | \
+			cut -d"=" -f2 )
+DATEEXP=$(date --date="$DATESSL" "+%Y%m%d")
+DATEW=$(date --date="$DATESSL -$WARN day" "+%Y%m%d")
+DATEC=$(date --date="$DATESSL -$CRIT day" "+%Y%m%d")
+DATECURRENT=$(date "+%Y%m%d")
+
+if [[ $DATEW -ge $DATECURRENT  ]]; then
+	echo "OK : SSL validity goes beyond 1 month (expire $DATESSL)"
+	exit 0
+elif [[ $DATEEXP -lt $DATECURRENT ]]; then
+	echo "CRITICAL : Already expired !! (expired $DATESSL)"
+	exit 2
+elif [[ $DATEC -lt $DATECURRENT ]]; then
+	echo "CRITICAL : less than one week before expiration (expire $DATESSL)"
+	exit 2
+elif [[ $DATEW -lt $DATECURRENT ]]; then
+	echo "WARING : SSL validity expire in less than 1 month (expire $DATESSL)"
+	exit 1
+else
+	echo "UNKOWN : site probably not in https"
+	exit 3
+fi
